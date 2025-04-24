@@ -1819,7 +1819,7 @@ with main_tabs[2]:
                     all_task_ids = set()
                     for sprint, tasks in st.session_state.results["sprint_data"]["sprint_assignments"].items():
                         for task in tasks:
-                            all_task_ids.add(str(task["ID"]))
+                            all_task_ids.add(str(task))  # task is already a task ID
                     
                     # Get all task IDs from retrospectives
                     retro_feedback_df = create_dataframe_from_results(st.session_state.retro_feedback)
