@@ -1,21 +1,32 @@
 import streamlit as st
-import re
-
-st.set_page_config(page_title="Agile Suite", layout="wide")
-st.title("🛠️ Agile Sprint Planner + Retrospective + AI Insights")
-
-tab1, tab2, tab3 = st.tabs(["📅 Sprint Planner", "📊 Retrospective", "🤖 AI Suggestions"])
+import tokenize
+from io import StringIO
 
 def safe_exec(file_path, tab_name=""):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
-        # Remove any line that calls st.set_page_config (even if spaces or tabs exist)
-        filtered_lines = [line for line in lines if ".set_page_config" not in line]
-        cleaned_code = ''.join(filtered_lines)
+        # Completely remove any line containing st.set_page_config
+        # Preserve indentation by checking with tokenizer
+        cleaned_lines = []
+        skip_next_indent = False
 
+        for line in lines:
+            if "st.set_page_config" in line:
+                continue  # skip the config line
+
+            # Skip if previous line indicated an indent block (avoid incomplete indents)
+            if skip_next_indent and (line.startswith(" ") or line.startswith("\t")):
+                continue
+            else:
+                skip_next_indent = False
+
+            cleaned_lines.append(line)
+
+        cleaned_code = "".join(cleaned_lines)
         exec(cleaned_code, globals())
+
     except Exception as e:
         st.error(f"❌ Error running `{file_path}` in {tab_name} tab:\n\n`{type(e).__name__}: {e}`")
 
