@@ -5,30 +5,36 @@ st.title("🛠️ Agile Sprint Planner + Retrospective + AI Insights")
 
 tab1, tab2, tab3 = st.tabs(["📅 Sprint Planner", "📊 Retrospective", "🤖 AI Suggestions"])
 
-def safe_exec(path):
-    with open(path, "r") as f:
-        code = f.read()
-    # Remove any lines with st.set_page_config
-    filtered_code = "\n".join([line for line in code.splitlines() if "st.set_page_config" not in line])
-    exec(filtered_code, globals())
+def safe_exec(file_path, tab_name=""):
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            code = f.read()
+        # Remove set_page_config lines
+        filtered_code = "\n".join([
+            line for line in code.splitlines()
+            if "st.set_page_config" not in line.strip()
+        ])
+        exec(filtered_code, globals())
+    except Exception as e:
+        st.error(f"❌ Error running `{file_path}` in {tab_name} tab:\n\n`{type(e).__name__}: {e}`")
 
-# Session state placeholders
+# Init shared state
 if "retrospective_feedback" not in st.session_state:
     st.session_state.retrospective_feedback = None
 if "df_tasks" not in st.session_state:
     st.session_state.df_tasks = None
 
-# Tab 1
+# Sprint Planner
 with tab1:
     st.markdown("### Sprint Planner Interface")
-    safe_exec("4.0AIchatbotsprint_FINAL_FULL.py")
+    safe_exec("4.0AIchatbotsprint_FINAL_FULL.py", "Sprint Planner")
 
-# Tab 2
+# Retrospective
 with tab2:
     st.markdown("### Retrospective Feedback Analysis")
-    safe_exec("app.py")
+    safe_exec("app.py", "Retrospective Analysis")
 
-# Tab 3
+# AI Insights
 with tab3:
     st.markdown("### AI Suggestions Based on Feedback + Sprint Data")
 
