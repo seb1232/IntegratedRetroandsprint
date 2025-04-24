@@ -1,40 +1,36 @@
 import streamlit as st
+import re
 
-# Ensure Streamlit config is set first
+# Set Streamlit config FIRST
 st.set_page_config(page_title="Agile Suite", layout="wide")
 st.title("🛠️ Agile Sprint Planner + Retrospective + AI Insights")
 
-# Create tabs
+# Create Tabs
 tab1, tab2, tab3 = st.tabs(["📅 Sprint Planner", "📊 Retrospective", "🤖 AI Suggestions"])
 
-# Helper to safely execute other apps without re-calling st.set_page_config
+# Cleanly remove any st.set_page_config calls using regex
 def safe_exec(path):
     with open(path, "r", encoding="utf-8") as f:
         code = f.read()
-    # Remove st.set_page_config if present
-    filtered_code = "\n".join(
-        line for line in code.splitlines()
-        if "st.set_page_config" not in line.strip()
-    )
-    exec(filtered_code, globals())
+    # Remove lines with set_page_config (and prevent trailing indentation issues)
+    code = re.sub(r'^.*st\.set_page_config\(.*\)\s*$', '', code, flags=re.MULTILINE)
+    exec(code, globals())
 
-# Shared session state
+# Initialize session state
 if "retrospective_feedback" not in st.session_state:
     st.session_state.retrospective_feedback = None
 if "df_tasks" not in st.session_state:
     st.session_state.df_tasks = None
 
-# Tab 1: Sprint Planner
+# Run tabs
 with tab1:
     st.markdown("### Sprint Planner Interface")
     safe_exec("4.0AIchatbotsprint_FINAL_FULL.py")
 
-# Tab 2: Retrospective Analysis
 with tab2:
     st.markdown("### Retrospective Feedback Analysis")
     safe_exec("app.py")
 
-# Tab 3: AI Suggestions
 with tab3:
     st.markdown("### AI Suggestions Based on Feedback + Sprint Data")
 
