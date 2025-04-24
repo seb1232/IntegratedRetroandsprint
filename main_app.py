@@ -9,14 +9,16 @@ tab1, tab2, tab3 = st.tabs(["📅 Sprint Planner", "📊 Retrospective", "🤖 A
 def safe_exec(file_path, tab_name=""):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
-            code = f.read()
+            lines = f.readlines()
 
-        # Remove st.set_page_config lines without breaking indentation
-        cleaned_code = re.sub(r'^\s*st\.set_page_config\(.*\)\s*$', '', code, flags=re.MULTILINE)
+        # Remove any line that calls st.set_page_config (even if spaces or tabs exist)
+        filtered_lines = [line for line in lines if ".set_page_config" not in line]
+        cleaned_code = ''.join(filtered_lines)
 
         exec(cleaned_code, globals())
     except Exception as e:
         st.error(f"❌ Error running `{file_path}` in {tab_name} tab:\n\n`{type(e).__name__}: {e}`")
+
 
 # Shared session state
 if "retrospective_feedback" not in st.session_state:
