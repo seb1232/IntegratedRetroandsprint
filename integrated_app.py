@@ -1779,7 +1779,9 @@ with main_tabs[2]:
                 
                 results = st.session_state.results
                 for sprint, tasks in results["sprint_data"]["sprint_assignments"].items():
-                    total_hours = sum(task["Original Estimates"] for task in tasks)
+                    df = results["df"]
+                    sprint_tasks = df[df["ID"].isin(tasks)]
+                    total_hours = sprint_tasks["Original Estimates"].sum()
                     available = st.session_state.capacity_per_sprint * len(st.session_state.team_members)
                     utilized = total_hours / available * 100
                     
