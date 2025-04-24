@@ -1,34 +1,13 @@
 import streamlit as st
-import ast
+from app import run_retrospective  # Import the retrospective function
+from AIchatbotsprint_FINAL_FULL import run_sprint_planner  # Import the sprint planner function
 
+# Set the page config (only need to do this once)
 st.set_page_config(page_title="Agile Suite", layout="wide")
 st.title("🛠️ Agile Sprint Planner + Retrospective + AI Insights")
 
+# Create tabs
 tab1, tab2, tab3 = st.tabs(["📅 Sprint Planner", "📊 Retrospective", "🤖 AI Suggestions"])
-
-def safe_exec(file_path, tab_name):
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            code = f.read()
-
-        # Parse AST and remove st.set_page_config()
-        class ConfigRemover(ast.NodeTransformer):
-            def visit_Expr(self, node):
-                if isinstance(node.value, ast.Call):
-                    func = node.value.func
-                    if isinstance(func, ast.Attribute):
-                        if func.attr == "set_page_config" and getattr(func.value, 'id', '') == 'st':
-                            return None
-                return node
-
-        tree = ast.parse(code, filename=file_path)
-        cleaned_tree = ConfigRemover().visit(tree)
-        ast.fix_missing_locations(cleaned_tree)
-        cleaned_code = compile(cleaned_tree, filename="<ast>", mode="exec")
-        exec(cleaned_code, globals())
-
-    except Exception as e:
-        st.error(f"❌ Error in {tab_name} tab running `{file_path}`:\n\n`{type(e).__name__}: {e}`")
 
 # Shared state
 if "retrospective_feedback" not in st.session_state:
@@ -38,15 +17,11 @@ if "df_tasks" not in st.session_state:
 
 # Sprint Planner
 with tab1:
-    with st.container():
-        st.markdown("### Sprint Planner")
-        safe_exec("4.0AIchatbotsprint_FINAL_FULL.py", "Sprint Planner")
+    run_sprint_planner()
 
 # Retrospective
 with tab2:
-    with st.container():
-        st.markdown("### Retrospective Analysis")
-        safe_exec("app.py", "Retrospective")
+    run_retrospective()
 
 # AI Suggestions
 with tab3:
