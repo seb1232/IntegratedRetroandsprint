@@ -1,5 +1,5 @@
 import streamlit as st
-
+import ast
 st.set_page_config(page_title="Agile Suite", layout="wide")
 
 st.title("🛠️ Agile Sprint Planner + Retrospective + AI Insights")
@@ -8,20 +8,35 @@ st.title("🛠️ Agile Sprint Planner + Retrospective + AI Insights")
 tab1, tab2, tab3 = st.tabs(["📅 Sprint Planner", "📊 Retrospective", "🤖 AI Suggestions"])
 
 # Define safe executor that removes st.set_page_config and protects indent
+
 def safe_exec(file_path, tab_name):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
+            code = f.read()
 
-        filtered = []
-        for line in lines:
-            if "st.set_page_config" in line:
-                continue
-            filtered.append(line)
+        # Parse the AST (Python's internal code tree)
+        tree = ast.parse(code, filename=file_path)
 
-        exec("".join(filtered), globals())
+        # Filter out st.set_page_config calls
+        class ConfigRemover(ast.NodeTransformer):
+            def visit_Expr(self, node):
+                if isinstance(node.value, ast.Call):
+                    func = node.value.func
+                    if isinstance(func, ast.Attribute):
+                        if func.attr == "set_page_config" and getattr(func.value, 'id', '') == 'st':
+                            return None  # Remove this node
+                return node
+
+        cleaned_tree = ConfigRemover().visit(tree)
+        ast.fix_missing_locations(cleaned_tree)
+
+        # Convert back to code
+        cleaned_code = compile(cleaned_tree, filename="<ast>", mode="exec")
+        exec(cleaned_code, globals())
+
     except Exception as e:
         st.error(f"❌ Error in {tab_name} tab running `{file_path}`:\n\n`{type(e).__name__}: {e}`")
+
 
 # Shared state placeholders
 if "retrospective_feedback" not in st.session_state:
