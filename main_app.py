@@ -23,7 +23,6 @@ st.set_page_config(
 st.sidebar.title("📊 Navigation")
 selected_view = st.sidebar.radio("Select a tool:", ["Sprint Planner", "Retrospective Tool"])
 
-# Sprint Planner Code
 if selected_view == "Sprint Planner":
     # Add custom CSS for dark theme and styling
     st.markdown("""
@@ -1514,7 +1513,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Retrospective Tool Code
 elif selected_view == "Retrospective Tool":
     st.title("Team Retrospective Analysis Tool")
     st.markdown("Upload multiple retrospective CSV files to analyze and compare feedback across team retrospectives.")
