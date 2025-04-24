@@ -13,9 +13,18 @@ from datetime import datetime, timedelta
 import requests
 import json
 import msal
+
+st.set_page_config(
+    page_title="Agile Tools Dashboard",  # General title for both views
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 # Add a sidebar menu to switch views
 st.sidebar.title("📊 Navigation")
 selected_view = st.sidebar.radio("Select a tool:", ["Sprint Planner", "Retrospective Tool"])
+#sprint plannercode
 if selected_view == "Sprint Planner":
     # === Sprint Planner Code Start ===
     # [All your Sprint Planner code here]
