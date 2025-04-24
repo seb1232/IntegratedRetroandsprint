@@ -1,6 +1,6 @@
 import streamlit as st
 from app import run_retrospective  # Import the retrospective function
-from 4.0AIchatbotsprint_FINAL_FULL import run_sprint_planner  # Import the sprint planner function
+from AIchatbotsprint_FINAL_FULL import run_sprint_planner  # Import the sprint planner function
 
 # Set the page config (only need to do this once)
 st.set_page_config(page_title="Agile Suite", layout="wide")
