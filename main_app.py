@@ -9,11 +9,11 @@ import numpy as np
 import plotly.express as px
 
 # === Sprint Planner Code Start ===
-" + open("/mnt/data/4.0AIchatbotsprint_FINAL_FULL.py", "r", encoding="utf-8").read() + "
+" + open("/mnt/data/4.0AIchatbotsprint_FINAL_FULL.py", "r", encoding="utf-8").read().replace("\"""", "\"\"\"") + "
 # === Sprint Planner Code End ===
 
 # === Retrospective Tool Code Start ===
-" + open("/mnt/data/app.py", "r", encoding="utf-8").read() + "
+" + open("/mnt/data/app.py", "r", encoding="utf-8").read().replace("\"""", "\"\"\"") + "
 # === Retrospective Tool Code End ===
 
 # --- Unified Page Config ---
