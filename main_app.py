@@ -1,4 +1,5 @@
 import streamlit as st
+import re
 
 st.set_page_config(page_title="Agile Suite", layout="wide")
 st.title("🛠️ Agile Sprint Planner + Retrospective + AI Insights")
@@ -9,35 +10,33 @@ def safe_exec(file_path, tab_name=""):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             code = f.read()
-        # Remove set_page_config lines
-        filtered_code = "\n".join([
-            line for line in code.splitlines()
-            if "st.set_page_config" not in line.strip()
-        ])
-        exec(filtered_code, globals())
+
+        # Remove st.set_page_config lines without breaking indentation
+        cleaned_code = re.sub(r'^\s*st\.set_page_config\(.*\)\s*$', '', code, flags=re.MULTILINE)
+
+        exec(cleaned_code, globals())
     except Exception as e:
         st.error(f"❌ Error running `{file_path}` in {tab_name} tab:\n\n`{type(e).__name__}: {e}`")
 
-# Init shared state
+# Shared session state
 if "retrospective_feedback" not in st.session_state:
     st.session_state.retrospective_feedback = None
 if "df_tasks" not in st.session_state:
     st.session_state.df_tasks = None
 
-# Sprint Planner
+# Tab 1: Sprint Planner
 with tab1:
     st.markdown("### Sprint Planner Interface")
     safe_exec("4.0AIchatbotsprint_FINAL_FULL.py", "Sprint Planner")
 
-# Retrospective
+# Tab 2: Retrospective
 with tab2:
     st.markdown("### Retrospective Feedback Analysis")
     safe_exec("app.py", "Retrospective Analysis")
 
-# AI Insights
+# Tab 3: AI
 with tab3:
     st.markdown("### AI Suggestions Based on Feedback + Sprint Data")
-
     retro_df = st.session_state.get("retrospective_feedback")
     task_df = st.session_state.get("df_tasks")
 
