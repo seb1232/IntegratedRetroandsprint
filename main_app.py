@@ -1,55 +1,47 @@
 import streamlit as st
-import tokenize
-from io import StringIO
 
-def safe_exec(file_path, tab_name=""):
+st.set_page_config(page_title="Agile Suite", layout="wide")
+
+st.title("🛠️ Agile Sprint Planner + Retrospective + AI Insights")
+
+# Use 3 tabs for the three tools
+tab1, tab2, tab3 = st.tabs(["📅 Sprint Planner", "📊 Retrospective", "🤖 AI Suggestions"])
+
+# Define safe executor that removes st.set_page_config and protects indent
+def safe_exec(file_path, tab_name):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
-        # Completely remove any line containing st.set_page_config
-        # Preserve indentation by checking with tokenizer
-        cleaned_lines = []
-        skip_next_indent = False
-
+        filtered = []
         for line in lines:
             if "st.set_page_config" in line:
-                continue  # skip the config line
-
-            # Skip if previous line indicated an indent block (avoid incomplete indents)
-            if skip_next_indent and (line.startswith(" ") or line.startswith("\t")):
                 continue
-            else:
-                skip_next_indent = False
+            filtered.append(line)
 
-            cleaned_lines.append(line)
-
-        cleaned_code = "".join(cleaned_lines)
-        exec(cleaned_code, globals())
-
+        exec("".join(filtered), globals())
     except Exception as e:
-        st.error(f"❌ Error running `{file_path}` in {tab_name} tab:\n\n`{type(e).__name__}: {e}`")
+        st.error(f"❌ Error in {tab_name} tab running `{file_path}`:\n\n`{type(e).__name__}: {e}`")
 
-
-# Shared session state
+# Shared state placeholders
 if "retrospective_feedback" not in st.session_state:
     st.session_state.retrospective_feedback = None
 if "df_tasks" not in st.session_state:
     st.session_state.df_tasks = None
 
-# Tab 1: Sprint Planner
+# Sprint Planner Tab
 with tab1:
-    st.markdown("### Sprint Planner Interface")
+    st.markdown("### Sprint Planner")
     safe_exec("4.0AIchatbotsprint_FINAL_FULL.py", "Sprint Planner")
 
-# Tab 2: Retrospective
+# Retrospective Tab
 with tab2:
-    st.markdown("### Retrospective Feedback Analysis")
-    safe_exec("app.py", "Retrospective Analysis")
+    st.markdown("### Retrospective Analysis")
+    safe_exec("app.py", "Retrospective")
 
-# Tab 3: AI
+# AI Suggestions Tab
 with tab3:
-    st.markdown("### AI Suggestions Based on Feedback + Sprint Data")
+    st.markdown("### AI Suggestions Based on Feedback + Tasks")
     retro_df = st.session_state.get("retrospective_feedback")
     task_df = st.session_state.get("df_tasks")
 
