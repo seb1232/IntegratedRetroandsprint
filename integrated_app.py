@@ -1747,7 +1747,7 @@ with main_tabs[1]:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-        api_key = st.text_input("🔑 OpenRouter API Key", type="password", key="ai_api_key")
+        api_key = st.text_input("🔑 OpenRouter API Key", type="password", key="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")
 
         if "retro_feedback" not in st.session_state or st.session_state.retro_feedback is None:
             st.info("Analyze retrospectives first in the previous tab.")
