@@ -1569,6 +1569,93 @@ with main_tabs[0]:
 with main_tabs[1]:
     st.header("Team Retrospective Analysis Tool")
     st.markdown("Upload multiple retrospective CSV files to analyze and compare feedback across team retrospectives.")
+    retro_ai = st.tabs([
+        "1. AI for retrospective Tasks"
+    ])
+    with retro_ai:
+        st.header("🤖 AI Retrospective Assistant")
+        st.markdown("Ask questions about your feedback, get summaries, or suggestions for improvement.\n\nPowered by OpenRouter + OpenAI.")
+
+        if "ai_messages" not in st.session_state:
+            st.session_state.ai_messages = [
+                {"role": "assistant", "content": "Hi! I'm your retrospective assistant. Ask me about themes, issues, or improvements from your team's feedback."}
+            ]
+
+        for message in st.session_state.ai_messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        api_key = st.text_input("🔑 OpenRouter API Key", type="password", key="ai_api_key")
+
+        if "retro_feedback" not in st.session_state or st.session_state.retro_feedback is None:
+            st.info("Please analyze retrospective data in the first tab before chatting.")
+            st.stop()
+
+        df = create_dataframe_from_results(st.session_state.retro_feedback)
+
+        # Build context for the assistant
+        context = "You are an assistant helping a team reflect on their sprint retrospective. Here’s a summary of feedback:\n\n"
+        for _, row in df.iterrows():
+            votes = row['Votes']
+            task = f" (Task ID: {row['Task ID']})" if row['Task ID'] != "None" else ""
+            context += f"- {row['Feedback']} [{votes} votes]{task}\n"
+
+        prompt = st.chat_input("Ask me about themes, issues, or suggestions...")
+
+        if prompt:
+            st.session_state.ai_messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
+                full_response = ""
+
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "HTTP-Referer": "https://localhost",
+                    "Content-Type": "application/json"
+                }
+
+                body = {
+                    "model": "openai/gpt-3.5-turbo",
+                    "messages": [{"role": "system", "content": context}] +
+                                [msg for msg in st.session_state.ai_messages if msg["role"] != "assistant"],
+                    "temperature": 0.7,
+                    "max_tokens": 1500,
+                    "stream": True
+                }
+
+                try:
+                    with requests.post(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        headers=headers,
+                        json=body,
+                        stream=True
+                    ) as response:
+                        if response.status_code == 200:
+                            for chunk in response.iter_lines():
+                                if chunk:
+                                    chunk_str = chunk.decode('utf-8')
+                                    if chunk_str.startswith("data:"):
+                                        try:
+                                            data = json.loads(chunk_str[5:])
+                                            if "choices" in data and data["choices"]:
+                                                delta = data["choices"][0].get("delta", {})
+                                                if "content" in delta:
+                                                    full_response += delta["content"]
+                                                    message_placeholder.markdown(full_response + "▌")
+                                        except json.JSONDecodeError:
+                                            continue
+                        else:
+                            full_response = f"Error: {response.status_code} - {response.text}"
+                except Exception as e:
+                    full_response = f"An error occurred: {str(e)}"
+
+                message_placeholder.markdown(full_response)
+                st.session_state.ai_messages.append({"role": "assistant", "content": full_response})
+
+
     
     # Sidebar for file upload and filtering controls
     col1, col2 = st.columns([1, 2])
