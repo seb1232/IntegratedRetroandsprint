@@ -494,790 +494,351 @@ with main_tabs[0]:
         )
     
     # 1.3 SPRINT & TASK ASSIGNMENT TAB
-    # 3. TASK ASSIGNMENT TAB
     with assignment_tab:
-        st.header("Sprint & Task Assignment")
+        st.subheader("Configure Sprint & Assign Tasks")
         
-        if st.session_state.df_tasks is None:
-            st.warning("Please upload tasks data in the Upload Tasks tab first.")
-        elif not st.session_state.team_members:
-            st.warning("Please add team members in the Configure Team tab first.")
+        # Validate prerequisites
+        tasks_ready = st.session_state.df_tasks is not None and not st.session_state.df_tasks.empty
+        team_ready = bool(st.session_state.team_members)
+        
+        if not tasks_ready:
+            st.error("Please upload task data in the 'Upload Tasks' tab first.")
+        elif not team_ready:
+            st.error("Please configure team members in the 'Configure Team' tab first.")
         else:
+            # Sprint configuration
             st.markdown("""
-            <div style='background-color: #1b5e20; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #e0e0e0;'>
-                <h3 style='margin-top: 0;'>Sprint-Based Priority-Balanced Task Assignment</h3>
-                <p>This algorithm distributes work to ensure team members get a fair mix of high, medium, and low priority tasks across multiple sprints.</p>
-                <p>Every team member will receive tasks from all priority levels rather than one person getting all high-priority tasks.</p>
-                <p>Remaining capacity from earlier sprints will be carried forward to subsequent sprints.</p>
+            <div style='background-color: #8a2be2; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: white;'>
+                Configure sprint details and task allocation strategy.
             </div>
             """, unsafe_allow_html=True)
-            
-            # Sprint Configuration Section
-            st.subheader("Sprint Configuration")
-            
-            # Default sprint duration in weeks
-            sprint_duration = st.number_input(
-                "Sprint Duration (weeks)",
-                min_value=1,
-                max_value=4,
-                value=2,
-                help="Duration of each sprint in weeks"
-            )
-            
-            # Number of sprints
-            num_sprints = st.number_input(
-                "Number of Sprints",
-                min_value=1,
-                max_value=12,
-                value=3,
-                help="Number of sprints to plan for"
-            )
-            
-            # Working days per week
-            days_per_week = st.number_input(
-                "Working Days per Week",
-                min_value=1,
-                max_value=7,
-                value=5,
-                help="Number of working days per week"
-            )
-            
-            # Hours per day
-            hours_per_day = st.number_input(
-                "Working Hours per Day",
-                min_value=1,
-                max_value=24,
-                value=8,
-                help="Number of working hours per day"
-            )
-            
-            # Calculate total hours per sprint
-            # This will be used to adjust the team members' capacities for each sprint
-            st.session_state.capacity_per_sprint = sprint_duration * days_per_week * hours_per_day
-            
-            # Let user know how many hours each sprint represents
-            st.info(f"Each sprint represents {st.session_state.capacity_per_sprint} working hours per team member (assuming full capacity).")
-            
-            # Assignment Options
-            st.subheader("Assignment Options")
             
             col1, col2 = st.columns(2)
             
             with col1:
-                priority_balance = st.slider(
-                    "Priority Balance",
-                    min_value=0.0,
-                    max_value=1.0,
-                    value=0.7,
-                    step=0.1,
-                    help="Higher values (0.7-1.0) ensure everyone gets a mix of high/medium/low tasks. Lower values focus more on capacity utilization. Default (0.7) gives a good balance."
+                num_sprints = st.number_input(
+                    "Number of Sprints", 
+                    min_value=1, 
+                    max_value=12, 
+                    value=3,
+                    help="How many sprints to plan for?"
                 )
             
             with col2:
-                respect_category = st.checkbox(
-                    "Consider Category Specialization",
-                    value=False,
-                    help="When enabled, members will be assigned tasks from their specialized categories when possible"
+                sprint_allocation_strategy = st.selectbox(
+                    "Task Allocation Strategy",
+                    options=["Priority-based", "Even Distribution", "Prioritize Critical First"],
+                    help="How should tasks be allocated across sprints?"
                 )
-                
-            # Assignment button
-            if st.button("Run Assignment", type="primary", use_container_width=True):
-                # Get the data
-                df = st.session_state.df_tasks.copy()
-                team_members = st.session_state.team_members
-                
-                # Check for required columns
-                required_columns = ["Priority", "Original Estimates"]
-                if not all(col in df.columns for col in required_columns):
-                    st.error(f"CSV must contain these columns: {', '.join(required_columns)}")
-                else:
-                    with st.spinner("Assigning tasks across sprints..."):
-                        # Prepare data
-                        assigned_hours = {member: 0 for member in team_members}
-                        assigned_priorities = {member: {"high": 0, "medium": 0, "low": 0, "other": 0} for member in team_members}
+            
+            # Task sorting options
+            st.subheader("Task Prioritization")
+            
+            priority_order = st.multiselect(
+                "Priority Levels (Highest to Lowest)",
+                options=sorted(st.session_state.df_tasks["Priority"].unique()),
+                default=sorted(st.session_state.df_tasks["Priority"].unique()),
+                help="Order priority levels from highest to lowest importance"
+            )
+            
+            # Member assignment preferences
+            st.subheader("Team Member Assignment Preferences")
+            
+            assign_by_skill = st.checkbox(
+                "Enable Skill-Based Assignment",
+                help="If enabled, tasks will be assigned based on team member skills and previous assignments"
+            )
+            
+            if assign_by_skill:
+                with st.expander("Skill & Task Type Mapping"):
+                    # Allow mapping team members to task types/skills
+                    for member_name in st.session_state.team_members.keys():
+                        st.multiselect(
+                            f"Preferred tasks for {member_name}",
+                            options=["Development", "Design", "Testing", "Documentation", "Research"],
+                            default=["Development"],
+                            key=f"skill_{member_name}"
+                        )
+            
+            # Capacity buffer
+            buffer_percentage = st.slider(
+                "Capacity Buffer (%)",
+                min_value=0,
+                max_value=50,
+                value=10,
+                help="Reserved capacity percentage as buffer for unexpected work"
+            )
+            
+            # Execute planning
+            if st.button("Generate Sprint Plan", type="primary"):
+                with st.spinner("Planning sprints and assigning tasks..."):
+                    
+                    # YOUR SPRINT PLANNING ALGORITHM HERE
+                    
+                    # Simulate planning results
+                    sprint_assignments = {}
+                    member_assignments = {}
+                    
+                    # Simple algo: distribute tasks across sprints based on priority
+                    tasks_df = st.session_state.df_tasks.copy()
+                    
+                    # This is just a placeholder. A real algorithm would be more sophisticated
+                    if priority_order:
+                        # Create a category based on priority order
+                        priority_map = {p: i for i, p in enumerate(priority_order)}
+                        tasks_df["Priority_Order"] = tasks_df["Priority"].map(priority_map)
+                        tasks_df = tasks_df.sort_values(by=["Priority_Order", "Original Estimates"], ascending=[True, False])
+                    
+                    # Reset the index to iterate tasks in order
+                    tasks_df = tasks_df.reset_index(drop=True)
+                    
+                    # Initialize sprint and member capacity
+                    sprint_capacity = {f"Sprint {i+1}": st.session_state.capacity_per_sprint * len(st.session_state.team_members) * (1 - buffer_percentage/100) for i in range(num_sprints)}
+                    member_capacity = {sprint: {member: st.session_state.capacity_per_sprint * (1 - buffer_percentage/100) for member in st.session_state.team_members} for sprint in sprint_capacity}
+                    
+                    # Initialize result containers
+                    sprint_assignments = {sprint: [] for sprint in sprint_capacity}
+                    member_assignments = {member: {sprint: [] for sprint in sprint_capacity} for member in st.session_state.team_members}
+                    unassigned_tasks = []
+                    
+                    # Assign tasks to sprints and members
+                    for _, task in tasks_df.iterrows():
+                        assigned = False
+                        task_estimate = task["Original Estimates"]
                         
-                        # Add columns if missing or reset them
-                        if "Assigned To" not in df.columns:
-                            df["Assigned To"] = ""
-                        else:
-                            df["Assigned To"] = ""  # Reset assignments
-                            
-                        if "Iteration Path" not in df.columns:
-                            df["Iteration Path"] = ""
-                        else:
-                            df["Iteration Path"] = ""  # Reset iteration paths
-                        
-                        if "Sprint" not in df.columns:
-                            df["Sprint"] = ""
-                        else:
-                            df["Sprint"] = ""  # Reset sprint assignments
-                        
-                        # Define priority order and sort tasks
-                        priority_order = {"high": 1, "medium": 2, "low": 3}
-                        df["PriorityOrder"] = df["Priority"].str.lower().map(priority_order).fillna(4)
-                        df = df.sort_values("PriorityOrder")  # Sort by priority
-                        
-                        # Calculate priorities distribution targets per member
-                        priorities_list = ["high", "medium", "low", "other"]
-                        priority_counts = {}
-                        for priority in priorities_list:
-                            if priority == "other":
-                                count = len(df[~df["Priority"].str.lower().isin(["high", "medium", "low"])])
-                            else:
-                                count = len(df[df["Priority"].str.lower() == priority])
-                            priority_counts[priority] = count
-                        
-                        # Calculate target distribution per member
-                        member_count = len(team_members)
-                        target_distribution = {
-                            priority: max(1, round(count / member_count)) 
-                            for priority, count in priority_counts.items() if count > 0
-                        }
-                        
-                        # Create a more detailed info message about sprint planning
-                        st.info(f"""
-                        Planning {num_sprints} sprints with capacity of {st.session_state.capacity_per_sprint} hours per person per sprint.
-                        Total capacity across all sprints: {num_sprints * st.session_state.capacity_per_sprint} hours per person.
-                        
-                        The algorithm will distribute tasks to ensure:
-                        1. Team members get a fair mix of high, medium, and low priority tasks
-                        2. Remaining capacity from each sprint is carried forward to the next sprint
-                        3. High priority tasks are assigned first
-                        """)
-                        
-                        # Initialize sprint-specific tracking data
-                        sprint_assignments = {}
-                        sprint_capacities = {}
-                        members_sprint_capacity = {}
-                        
-                        # Set up tracking for each sprint
-                        for sprint in range(1, num_sprints + 1):
-                            sprint_name = f"Sprint {sprint}"
-                            sprint_assignments[sprint_name] = []
-                            sprint_capacities[sprint_name] = {member: 0 for member in team_members}
-                        
-                        # Initialize remaining capacity for each member based on their capacity percentage
-                        # This tracks how much capacity is carried forward between sprints
-                        remaining_capacity = {member: 0 for member in team_members}
-                        
-                        # Process each sprint
-                        for sprint_num in range(1, num_sprints + 1):
-                            sprint_name = f"Sprint {sprint_num}"
-                            
-                            # Calculate each member's capacity for this sprint
-                            # Base capacity + any remaining capacity from previous sprint
-                            for member, full_capacity in team_members.items():
-                                # Calculate what percentage of full time this person is
-                                capacity_percentage = full_capacity / (num_sprints * st.session_state.capacity_per_sprint)
-                                # Capacity for this sprint is the percentage of the sprint's total hours + remaining from previous
-                                members_sprint_capacity[member] = (capacity_percentage * st.session_state.capacity_per_sprint) + remaining_capacity[member]
-                            
-                            # For logging/debugging: show the capacity for each member in each sprint
-                            capacity_summary = ", ".join([f"{m}: {c:.1f}h" for m, c in members_sprint_capacity.items()])
-                            st.text(f"{sprint_name} - Available capacity: {capacity_summary}")
-                            
-                            # Create a copy of tasks that haven't been assigned yet
-                            unassigned_tasks = df[df["Assigned To"] == ""].copy()
-                            
-                            # Skip if no tasks left to assign
-                            if len(unassigned_tasks) == 0:
-                                continue
-                            
-                            # Create priority task groups for this sprint
-                            task_groups = {}
-                            for priority in priorities_list:
-                                if priority == "other":
-                                    task_groups[priority] = unassigned_tasks[~unassigned_tasks["Priority"].str.lower().isin(["high", "medium", "low"])].copy()
-                                else:
-                                    task_groups[priority] = unassigned_tasks[unassigned_tasks["Priority"].str.lower() == priority].copy()
-                                
-                                # Sort by estimate within priority group (smaller tasks first for better distribution)
-                                if len(task_groups[priority]) > 0:
-                                    task_groups[priority] = task_groups[priority].sort_values("Original Estimates")
-                            
-                            # Track assigned priorities for this sprint
-                            sprint_assigned_priorities = {member: {"high": 0, "medium": 0, "low": 0, "other": 0} for member in team_members}
-                            
-                            # First pass: ensure everyone gets a mix of priorities
-                            available_priorities = [p for p in priorities_list if len(task_groups[p]) > 0]
-                            current_priority_index = 0
-                            cycle_count = 0
-                            
-                            while available_priorities and cycle_count < 100:  # Safety limit
-                                cycle_count += 1
-                                current_priority = available_priorities[current_priority_index]
-                                
-                                if len(task_groups[current_priority]) == 0:
-                                    # No more tasks of this priority
-                                    available_priorities.pop(current_priority_index)
-                                    if not available_priorities:
-                                        break
-                                    current_priority_index = current_priority_index % len(available_priorities)
-                                    continue
-                                
-                                # Sort members by who has the least of this priority in this sprint and most remaining capacity
-                                members_sorted = sorted(
-                                    team_members.keys(),
-                                    key=lambda m: (
-                                        sprint_assigned_priorities[m][current_priority],
-                                        assigned_priorities[m][current_priority],  # Consider overall assignments too
-                                        -members_sprint_capacity[m]  # Negated so higher capacity is first
-                                    )
-                                )
-                                
-                                # Try to assign to first member with capacity
-                                task_assigned = False
-                                for member in members_sorted:
-                                    # If no capacity left in this sprint for this member, skip
-                                    if members_sprint_capacity[member] <= 0:
-                                        continue
+                        # Find the sprint with enough capacity
+                        for sprint in sprint_capacity:
+                            if sprint_capacity[sprint] >= task_estimate:
+                                # Find a team member with enough capacity
+                                for member in member_capacity[sprint]:
+                                    if member_capacity[sprint][member] >= task_estimate:
+                                        # Assign task to this member and sprint
+                                        sprint_assignments[sprint].append(task)
+                                        member_assignments[member][sprint].append(task)
                                         
-                                    # Try to find a task that fits the member's remaining sprint capacity
-                                    for idx in task_groups[current_priority].index:
-                                        task = task_groups[current_priority].loc[idx]
-                                        estimate = task["Original Estimates"]
+                                        # Update capacities
+                                        sprint_capacity[sprint] -= task_estimate
+                                        member_capacity[sprint][member] -= task_estimate
                                         
-                                        if pd.isna(estimate) or estimate <= 0:
-                                            continue
-                                            
-                                        if estimate <= members_sprint_capacity[member]:
-                                            task_id = task["ID"]
-                                            
-                                            # Assign in the original dataframe
-                                            df.loc[df["ID"] == task_id, "Assigned To"] = member
-                                            df.loc[df["ID"] == task_id, "Sprint"] = sprint_name
-                                            df.loc[df["ID"] == task_id, "Iteration Path"] = f"/{sprint_name}/{current_priority}"
-                                            
-                                            # Update member statistics (both sprint-specific and overall)
-                                            members_sprint_capacity[member] -= estimate
-                                            sprint_capacities[sprint_name][member] += estimate
-                                            assigned_hours[member] += estimate
-                                            
-                                            # Update priority counts
-                                            sprint_assigned_priorities[member][current_priority] += 1
-                                            assigned_priorities[member][current_priority] += 1
-                                            
-                                            # Add to sprint assignments
-                                            sprint_assignments[sprint_name].append(task_id)
-                                            
-                                            # Remove task from the group
-                                            task_groups[current_priority] = task_groups[current_priority].drop(idx)
-                                            
-                                            task_assigned = True
-                                            break
-                                    
-                                    if task_assigned:
+                                        assigned = True
                                         break
                                 
-                                # If no task assigned this round, move to next priority
-                                current_priority_index = (current_priority_index + 1) % len(available_priorities)
-                                
-                                # If we've gone through all priorities and can't assign any more, break
-                                if not task_assigned and current_priority_index == 0:
+                                if assigned:
                                     break
-                            
-                            # Second pass - assign remaining tasks with balanced approach
-                            for priority_level in priorities_list:
-                                remaining_tasks = task_groups[priority_level]
-                                
-                                if len(remaining_tasks) == 0:
-                                    continue
-                                    
-                                for idx in remaining_tasks.index:
-                                    task = remaining_tasks.loc[idx]
-                                    task_id = task["ID"]
-                                    estimate = task["Original Estimates"]
-                                    
-                                    if pd.isna(estimate) or estimate <= 0:
-                                        continue
-                                    
-                                    # Sort members by who has the least of this priority and most remaining capacity
-                                    shuffled_members = sorted(
-                                        team_members.keys(),
-                                        key=lambda m: (
-                                            sprint_assigned_priorities[m][priority_level],
-                                            -members_sprint_capacity[m]  # Negated so higher capacity is first
-                                        )
-                                    )
-                                    
-                                    # Try to assign to the best-fit member with capacity
-                                    for member in shuffled_members:
-                                        if members_sprint_capacity[member] <= 0:
-                                            continue
-                                            
-                                        if estimate <= members_sprint_capacity[member]:
-                                            # Assign in the original dataframe
-                                            df.loc[df["ID"] == task_id, "Assigned To"] = member
-                                            df.loc[df["ID"] == task_id, "Sprint"] = sprint_name
-                                            df.loc[df["ID"] == task_id, "Iteration Path"] = f"/{sprint_name}/{priority_level}"
-                                            
-                                            # Update member statistics
-                                            members_sprint_capacity[member] -= estimate
-                                            sprint_capacities[sprint_name][member] += estimate
-                                            assigned_hours[member] += estimate
-                                            
-                                            # Update priority counts
-                                            sprint_assigned_priorities[member][priority_level] += 1
-                                            assigned_priorities[member][priority_level] += 1
-                                            
-                                            # Add to sprint assignments
-                                            sprint_assignments[sprint_name].append(task_id)
-                                            break
-                            
-                            # At the end of the sprint, update the remaining capacity that gets carried forward
-                            for member in team_members:
-                                remaining_capacity[member] = members_sprint_capacity[member]
-                                
-                            # Log how much capacity is being carried forward
-                            remaining_summary = ", ".join([f"{m}: {c:.1f}h" for m, c in remaining_capacity.items()])
-                            st.text(f"{sprint_name} - Remaining capacity carried forward: {remaining_summary}")
                         
-                        # Clean up
-                        if "PriorityOrder" in df.columns:
-                            df = df.drop(columns=["PriorityOrder"])
-                        
-                        # Store results with sprint data
-                        st.session_state.results = {
-                            "df": df,
-                            "assigned_hours": assigned_hours,
-                            "assigned_priorities": assigned_priorities,
-                            "team_members": team_members,
-                            "sprint_data": {
-                                "sprint_assignments": sprint_assignments,
-                                "sprint_capacities": sprint_capacities,
-                                "num_sprints": num_sprints
-                            }
-                        }
-                        
-                        # Switch to results tab
-                        st.success("Tasks assigned successfully across sprints! See the Results tab for sprint-by-sprint details.")
+                        if not assigned:
+                            unassigned_tasks.append(task)
+                    
+                    # Store results in session state
+                    st.session_state.results = {
+                        "sprint_assignments": sprint_assignments,
+                        "member_assignments": member_assignments,
+                        "unassigned_tasks": unassigned_tasks,
+                        "sprint_capacity": sprint_capacity,
+                        "member_capacity": member_capacity
+                    }
+                    
+                    # Show success message
+                    st.success("Sprint planning completed successfully! View results in the Results tab.")
     
-# 4. RESULTS TAB
+    # 1.4 RESULTS TAB
     with results_tab:
-        st.header("Assignment Results")
+        st.subheader("Sprint Planning Results")
         
-        if st.session_state.results is None:
-            st.warning("No assignment results available. Please run the assignment algorithm first.")
+        if "results" not in st.session_state or st.session_state.results is None:
+            st.info("Please generate a sprint plan in the 'Sprint & Task Assignment' tab first.")
         else:
             results = st.session_state.results
-            df = results["df"]
-            assigned_hours = results["assigned_hours"]
-            assigned_priorities = results["assigned_priorities"]
-            team_members = results["team_members"]
             
-            # Assignment summary
-            st.subheader("Summary")
-            
-            total_assigned = sum(assigned_hours.values())
-            total_capacity = sum(team_members.values())
-            percent_utilized = (total_assigned / total_capacity * 100) if total_capacity > 0 else 0
+            # Summary metrics
+            total_assigned = sum(len(tasks) for tasks in results["sprint_assignments"].values())
+            total_unassigned = len(results["unassigned_tasks"])
+            total_tasks = total_assigned + total_unassigned
             
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                st.metric("Total Tasks Assigned", len(df[df["Assigned To"] != ""]))
-                
+                st.metric("Tasks Assigned", f"{total_assigned} ({total_assigned/total_tasks*100:.1f}%)")
+            
             with col2:
-                st.metric("Hours Assigned", f"{total_assigned:.1f}/{total_capacity:.1f}")
-                
+                st.metric("Tasks Unassigned", f"{total_unassigned} ({total_unassigned/total_tasks*100:.1f}%)")
+            
             with col3:
-                st.metric("Capacity Utilized", f"{percent_utilized:.1f}%")
+                # Calculate average capacity utilization
+                total_capacity = sum(st.session_state.team_members.values()) * len(results["sprint_assignments"])
+                used_capacity = sum(st.session_state.capacity_per_sprint * len(st.session_state.team_members) - remaining for sprint, remaining in results["sprint_capacity"].items())
+                utilization = used_capacity / total_capacity * 100
+                st.metric("Capacity Utilization", f"{utilization:.1f}%")
+            
+            # Tabs for different result views
+            summary_tab, sprint_tab, member_tab, unassigned_tab = st.tabs([
+                "Summary", "Sprint View", "Member View", "Unassigned Tasks"
+            ])
+            
+            # Summary tab
+            with summary_tab:
+                st.subheader("Sprint Loading")
                 
-            # Detailed results
-            st.subheader("Assigned Tasks")
-            st.dataframe(
-                df,
-                column_config={
-                    "Priority": st.column_config.Column(
-                        "Priority",
-                        help="Task priority level",
-                        width="medium",
-                    ),
-                    "Original Estimates": st.column_config.NumberColumn(
-                        "Hours",
-                        help="Estimated work hours",
-                        format="%.1f",
-                    ),
-                    "Assigned To": st.column_config.Column(
-                        "Assigned To",
-                        help="Team member assigned to the task",
-                        width="medium",
-                    ),
-                    "Sprint": st.column_config.Column(
-                        "Sprint",
-                        help="Sprint assignment",
-                        width="medium",
-                    ),
-                },
-                use_container_width=True
-            )
-            
-            # Visualizations
-            st.subheader("Capacity Utilization")
-            
-            # Prepare data for visualization
-            members = list(team_members.keys())
-            capacities = [team_members[m] for m in members]
-            used_capacities = [assigned_hours[m] for m in members]
-            remaining_capacities = [capacities[i] - used_capacities[i] for i in range(len(members))]
-            
-            # Create capacity chart with dark theme
-            plt.style.use('dark_background')
-            fig, ax = plt.subplots(figsize=(10, 5))
-            bar_width = 0.35
-            x = np.arange(len(members))
-            
-            # Use more vibrant colors for dark theme
-            ax.bar(x, used_capacities, bar_width, label='Used', color='#81c784')
-            ax.bar(x, remaining_capacities, bar_width, bottom=used_capacities, label='Remaining', color='#455a64')
-            
-            ax.set_ylabel('Hours', color='#e0e0e0')
-            ax.set_title('Overall Capacity Utilization by Team Member', color='#81c784')
-            ax.set_xticks(x)
-            ax.set_xticklabels(members, rotation=45, ha='right', color='#e0e0e0')
-            ax.tick_params(axis='y', colors='#e0e0e0')
-            ax.spines['bottom'].set_color('#555555')
-            ax.spines['top'].set_color('#555555')
-            ax.spines['left'].set_color('#555555')
-            ax.spines['right'].set_color('#555555')
-            ax.grid(color='#333333', linestyle='-', linewidth=0.5, alpha=0.7)
-            ax.legend(facecolor='#2d2d2d', edgecolor='#555555', labelcolor='#e0e0e0')
-            
-            fig.patch.set_facecolor('#1e1e1e')
-            plt.tight_layout()
-            st.pyplot(fig)
-            
-            # Priority distribution
-            st.subheader("Priority Distribution")
-            
-            # Prepare data for priority chart
-            priorities = ["high", "medium", "low", "other"]
-            priority_data = {member: [assigned_priorities[member].get(p, 0) for p in priorities] for member in members}
-            
-            # Create stacked bar chart with dark theme
-            # We're already using dark_background style from the previous chart
-            fig, ax = plt.subplots(figsize=(10, 5))
-            bottom = np.zeros(len(members))
-            
-            # Enhanced colors for better visibility on dark background
-            colors = {'high': '#ef5350', 'medium': '#ffb74d', 'low': '#81c784', 'other': '#b0bec5'}
-            
-            for i, priority in enumerate(priorities):
-                priority_counts = [priority_data[member][i] for member in members]
-                ax.bar(members, priority_counts, bottom=bottom, label=priority.capitalize(), color=colors[priority])
-                bottom += priority_counts
-            
-            ax.set_ylabel('Number of Tasks', color='#e0e0e0')
-            ax.set_title('Overall Priority Distribution by Team Member', color='#81c784')
-            ax.set_xticks(range(len(members)))
-            ax.set_xticklabels(members, rotation=45, ha='right', color='#e0e0e0')
-            ax.tick_params(axis='y', colors='#e0e0e0')
-            ax.spines['bottom'].set_color('#555555')
-            ax.spines['top'].set_color('#555555')
-            ax.spines['left'].set_color('#555555')
-            ax.spines['right'].set_color('#555555')
-            ax.grid(color='#333333', linestyle='-', linewidth=0.5, alpha=0.7)
-            ax.legend(facecolor='#2d2d2d', edgecolor='#555555', labelcolor='#e0e0e0')
-            
-            fig.patch.set_facecolor('#1e1e1e')
-            plt.tight_layout()
-            st.pyplot(fig)
-            
-            # Add detailed priority distribution as tables
-            st.subheader("Detailed Priority Mix by Team Member")
-            st.write("This table shows exactly how many tasks of each priority level were assigned to each team member:")
-            
-            # Create a dataframe showing the priority distribution
-            priority_df = pd.DataFrame(assigned_priorities).T
-            priority_df.index.name = "Team Member"
-            priority_df.columns = [col.capitalize() for col in priority_df.columns]
-            
-            # Add percentage columns to show proportion of each priority
-            for member in priority_df.index:
-                total = priority_df.loc[member].sum()
-                if total > 0:
-                    for col in priority_df.columns:
-                        priority_df.loc[member, f"{col} %"] = round(priority_df.loc[member, col] / total * 100, 1)
-                else:
-                    for col in priority_df.columns:
-                        priority_df.loc[member, f"{col} %"] = 0.0
-            
-            # Display the dataframe
-            st.dataframe(priority_df, use_container_width=True)
-            
-            # Add a color legend explaining the priority levels
-            st.markdown("""
-            <div style="margin-top: 10px; padding: 10px; background-color: #2d2d2d; border-radius: 5px;">
-                <h4 style="color: #e0e0e0;">Priority Legend</h4>
-                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                    <div style="display: flex; align-items: center;">
-                        <div style="width: 20px; height: 20px; background-color: #ef5350; margin-right: 5px;"></div>
-                        <span style="color: #e0e0e0;">High</span>
-                    </div>
-                    <div style="display: flex; align-items: center;">
-                        <div style="width: 20px; height: 20px; background-color: #ffb74d; margin-right: 5px;"></div>
-                        <span style="color: #e0e0e0;">Medium</span>
-                    </div>
-                    <div style="display: flex; align-items: center;">
-                        <div style="width: 20px; height: 20px; background-color: #81c784; margin-right: 5px;"></div>
-                        <span style="color: #e0e0e0;">Low</span>
-                    </div>
-                    <div style="display: flex; align-items: center;">
-                        <div style="width: 20px; height: 20px; background-color: #b0bec5; margin-right: 5px;"></div>
-                        <span style="color: #e0e0e0;">Other</span>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Check if we have sprint data and display it
-            if "sprint_data" in results:
-                sprint_data = results["sprint_data"]
-                num_sprints = sprint_data["num_sprints"]
-                sprint_assignments = sprint_data["sprint_assignments"]
-                sprint_capacities = sprint_data["sprint_capacities"]
+                # Prepare data for chart
+                sprint_data = {
+                    "Sprint": [],
+                    "Assigned Hours": [],
+                    "Available Hours": [],
+                    "Utilization (%)": []
+                }
                 
-                st.header("Sprint Planning")
-                st.markdown("""
-                <div style="background-color: #1e3f20; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
-                    <p style="color: #e0e0e0; margin: 0;">
-                        Tasks are distributed across sprints with remaining capacity carried forward. 
-                        Each sprint balances priority distribution while respecting capacity constraints.
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Create sprint tabs for detailed view
-                sprint_tabs = st.tabs([f"Sprint {i}" for i in range(1, num_sprints + 1)])
-                
-                for i, sprint_tab in enumerate(sprint_tabs):
-                    sprint_name = f"Sprint {i+1}"
+                for sprint, tasks in results["sprint_assignments"].items():
+                    total_hours = sum(task["Original Estimates"] for task in tasks)
+                    available = st.session_state.capacity_per_sprint * len(st.session_state.team_members)
+                    utilized = total_hours / available * 100
                     
-                    with sprint_tab:
-                        st.subheader(f"{sprint_name} Assignments")
+                    sprint_data["Sprint"].append(sprint)
+                    sprint_data["Assigned Hours"].append(total_hours)
+                    sprint_data["Available Hours"].append(available)
+                    sprint_data["Utilization (%)"].append(utilized)
+                
+                sprint_df = pd.DataFrame(sprint_data)
+                
+                # Create visualization
+                fig = px.bar(
+                    sprint_df,
+                    x="Sprint",
+                    y=["Assigned Hours", "Available Hours"],
+                    barmode="group",
+                    title="Hours Allocation per Sprint",
+                    labels={"value": "Hours", "variable": "Category"}
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Utilization chart
+                fig2 = px.line(
+                    sprint_df,
+                    x="Sprint",
+                    y="Utilization (%)",
+                    markers=True,
+                    title="Capacity Utilization per Sprint",
+                    labels={"Utilization (%)": "Percentage Used"},
+                )
+                fig2.update_layout(yaxis_range=[0, 100])
+                
+                st.plotly_chart(fig2, use_container_width=True)
+            
+            # Sprint view tab
+            with sprint_tab:
+                selected_sprint = st.selectbox(
+                    "Select Sprint",
+                    options=list(results["sprint_assignments"].keys())
+                )
+                
+                if selected_sprint:
+                    tasks = results["sprint_assignments"][selected_sprint]
+                    
+                    if tasks:
+                        # Convert to DataFrame for display
+                        sprint_df = pd.DataFrame(tasks)
                         
-                        # Sprint Statistics
-                        sprint_tasks = df[df["Sprint"] == sprint_name]
+                        # Show tasks
+                        st.dataframe(sprint_df, use_container_width=True)
                         
-                        if len(sprint_tasks) == 0:
-                            st.info(f"No tasks assigned to {sprint_name}.")
-                            continue
+                        # Download option
+                        sprint_csv = sprint_df.to_csv(index=False)
+                        st.download_button(
+                            "Download Sprint Tasks as CSV",
+                            data=sprint_csv,
+                            file_name=f"{selected_sprint}_tasks.csv",
+                            mime="text/csv"
+                        )
+                    else:
+                        st.info(f"No tasks assigned to {selected_sprint}")
+            
+            # Member view tab
+            with member_tab:
+                selected_member = st.selectbox(
+                    "Select Team Member",
+                    options=list(results["member_assignments"].keys())
+                )
+                
+                if selected_member:
+                    member_tasks = []
+                    
+                    for sprint, tasks in results["member_assignments"][selected_member].items():
+                        for task in tasks:
+                            task_copy = task.copy()
+                            task_copy["Sprint"] = sprint
+                            member_tasks.append(task_copy)
+                    
+                    if member_tasks:
+                        # Convert to DataFrame for display
+                        member_df = pd.DataFrame(member_tasks)
                         
-                        # Display key metrics for this sprint
-                        col1, col2, col3 = st.columns(3)
+                        # Show tasks
+                        st.dataframe(member_df, use_container_width=True)
                         
-                        with col1:
-                            st.metric("Tasks", len(sprint_tasks))
-                        
-                        with col2:
-                            sprint_hours = sum(sprint_capacities[sprint_name].values())
-                            st.metric("Hours", f"{sprint_hours:.1f}")
-                        
-                        with col3:
-                            # Calculate how much capacity was utilized in this sprint
-                            total_sprint_capacity = sum([team_members[m] / num_sprints for m in team_members])
-                            sprint_percent = (sprint_hours / total_sprint_capacity * 100) if total_sprint_capacity > 0 else 0
-                            st.metric("Sprint Capacity Used", f"{sprint_percent:.1f}%")
-                        
-                        # Tasks assigned to this sprint
-                        st.subheader("Tasks")
-                        st.dataframe(
-                            sprint_tasks,
-                            column_config={
-                                "Priority": st.column_config.Column(
-                                    "Priority",
-                                    help="Task priority level",
-                                    width="medium"
-                                ),
-                                "Original Estimates": st.column_config.NumberColumn(
-                                    "Hours",
-                                    help="Estimated work hours",
-                                    format="%.1f"
-                                ),
-                                "Assigned To": st.column_config.Column(
-                                    "Assigned To",
-                                    help="Team member assigned to the task",
-                                    width="medium"
-                                )
-                            },
-                            use_container_width=True
+                        # Download option
+                        member_csv = member_df.to_csv(index=False)
+                        st.download_button(
+                            "Download Member Tasks as CSV",
+                            data=member_csv,
+                            file_name=f"{selected_member}_tasks.csv",
+                            mime="text/csv"
                         )
                         
-                        # Create visualization of capacity used in this sprint
-                        st.subheader("Sprint Capacity")
+                        # Show workload chart
+                        member_load = {}
+                        for sprint, tasks in results["member_assignments"][selected_member].items():
+                            member_load[sprint] = sum(task["Original Estimates"] for task in tasks)
                         
-                        # Prepare data
-                        members = list(team_members.keys())
-                        sprint_used = [sprint_capacities[sprint_name].get(m, 0) for m in members]
-                        
-                        # Calculate carried over capacity from previous sprint
-                        carried_over = []
-                        if i > 0:
-                            prev_sprint = f"Sprint {i}"
-                            for m in members:
-                                member_capacity = team_members[m] / num_sprints  # Base capacity per sprint
-                                used_in_prev = sprint_capacities[prev_sprint].get(m, 0)
-                                carried = max(0, member_capacity - used_in_prev)
-                                carried_over.append(carried)
-                        else:
-                            carried_over = [0] * len(members)
-                        
-                        # Create sprint capacity chart
-                        plt.style.use('dark_background')
-                        fig, ax = plt.subplots(figsize=(10, 5))
-                        bar_width = 0.35
-                        x = np.arange(len(members))
-                        
-                        # Member's standard capacity for this sprint
-                        standard_capacity = [team_members[m] / num_sprints for m in members]
-                        
-                        # Visualize standard capacity, carried over capacity, and used capacity
-                        ax.bar(x, standard_capacity, bar_width, label='Standard Capacity', color='#455a64', alpha=0.6)
-                        if any(c > 0 for c in carried_over):
-                            ax.bar(x, carried_over, bar_width, bottom=standard_capacity, label='Carried Over', color='#5c6bc0')
-                        ax.bar(x, sprint_used, bar_width/1.5, label='Used', color='#81c784')
-                        
-                        # Styling
-                        ax.set_ylabel('Hours', color='#e0e0e0')
-                        ax.set_title(f'{sprint_name} Capacity Utilization', color='#81c784')
-                        ax.set_xticks(x)
-                        ax.set_xticklabels(members, rotation=45, ha='right', color='#e0e0e0')
-                        ax.tick_params(axis='y', colors='#e0e0e0')
-                        ax.spines['bottom'].set_color('#555555')
-                        ax.spines['top'].set_color('#555555')
-                        ax.spines['left'].set_color('#555555')
-                        ax.spines['right'].set_color('#555555')
-                        ax.grid(color='#333333', linestyle='-', linewidth=0.5, alpha=0.7)
-                        ax.legend(facecolor='#2d2d2d', edgecolor='#555555', labelcolor='#e0e0e0')
-                        
-                        fig.patch.set_facecolor('#1e1e1e')
-                        plt.tight_layout()
-                        st.pyplot(fig)
-                        
-                        # Create priority breakdown for this sprint
-                        st.subheader("Sprint Priority Distribution")
-                        
-                        # Get priority distribution for this sprint
-                        sprint_priority_counts = {}
-                        for member in members:
-                            sprint_priority_counts[member] = {"high": 0, "medium": 0, "low": 0, "other": 0}
-                        
-                        for _, task in sprint_tasks.iterrows():
-                            member = task["Assigned To"]
-                            priority = task["Priority"].lower()
-                            if priority not in ["high", "medium", "low"]:
-                                priority = "other"
-                            sprint_priority_counts[member][priority] += 1
-                        
-                        # Create stacked bar chart for sprint priority distribution
-                        priority_data = {m: [sprint_priority_counts[m].get(p, 0) for p in priorities] for m in members}
-                        
-                        fig, ax = plt.subplots(figsize=(10, 5))
-                        bottom = np.zeros(len(members))
-                        
-                        for i, priority in enumerate(priorities):
-                            priority_counts = [priority_data[member][i] for member in members]
-                            ax.bar(members, priority_counts, bottom=bottom, label=priority.capitalize(), color=colors[priority])
-                            bottom += priority_counts
-                        
-                        ax.set_ylabel('Number of Tasks', color='#e0e0e0')
-                        ax.set_title(f'{sprint_name} Priority Distribution', color='#81c784')
-                        ax.set_xticks(range(len(members)))
-                        ax.set_xticklabels(members, rotation=45, ha='right', color='#e0e0e0')
-                        ax.tick_params(axis='y', colors='#e0e0e0')
-                        ax.spines['bottom'].set_color('#555555')
-                        ax.spines['top'].set_color('#555555')
-                        ax.spines['left'].set_color('#555555')
-                        ax.spines['right'].set_color('#555555')
-                        ax.grid(color='#333333', linestyle='-', linewidth=0.5, alpha=0.7)
-                        ax.legend(facecolor='#2d2d2d', edgecolor='#555555', labelcolor='#e0e0e0')
-                        
-                        fig.patch.set_facecolor('#1e1e1e')
-                        plt.tight_layout()
-                        st.pyplot(fig)
-                
-                # Create a Gantt chart visualization of tasks across sprints
-                st.header("Sprint Timeline")
-                
-                # Prepare data for Gantt chart
-                gantt_data = []
-                for _, task in df.iterrows():
-                    if task["Assigned To"] and task["Sprint"]:
-                        sprint_num = int(task["Sprint"].split(" ")[1])
-                        gantt_data.append({
-                            "Task": f"{task['ID']}: {task['Title']}",
-                            "Start": sprint_num,
-                            "Duration": 1,  # Each task takes 1 sprint
-                            "Member": task["Assigned To"],
-                            "Priority": task["Priority"]
+                        load_df = pd.DataFrame({
+                            "Sprint": list(member_load.keys()),
+                            "Hours": list(member_load.values()),
+                            "Capacity": [st.session_state.capacity_per_sprint] * len(member_load)
                         })
-                
-                if gantt_data:
-                    # Convert to DataFrame for easier plotting
-                    gantt_df = pd.DataFrame(gantt_data)
+                        
+                        fig = px.bar(
+                            load_df,
+                            x="Sprint",
+                            y=["Hours", "Capacity"],
+                            barmode="group",
+                            title=f"Workload for {selected_member} across Sprints",
+                            labels={"value": "Hours", "variable": "Category"}
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.info(f"No tasks assigned to {selected_member}")
+            
+            # Unassigned tasks tab
+            with unassigned_tab:
+                if results["unassigned_tasks"]:
+                    unassigned_df = pd.DataFrame(results["unassigned_tasks"])
                     
-                    # Sort by Member and Sprint
-                    gantt_df = gantt_df.sort_values(["Member", "Start"])
+                    st.dataframe(unassigned_df, use_container_width=True)
                     
-                    # Create figure and axes - adjust height based on task count
-                    max_height = max(8, min(20, len(gantt_df) * 0.3))  # Limit max height 
-                    fig, ax = plt.subplots(figsize=(12, max_height))
+                    # Download option
+                    unassigned_csv = unassigned_df.to_csv(index=False)
+                    st.download_button(
+                        "Download Unassigned Tasks as CSV",
+                        data=unassigned_csv,
+                        file_name="unassigned_tasks.csv",
+                        mime="text/csv"
+                    )
                     
-                    # Plot each task as a horizontal bar
-                    y_pos = np.arange(len(gantt_df))
-                    
-                    # Use colors based on priority
-                    task_colors = [colors.get(task["Priority"].lower(), colors.get("other")) for _, task in gantt_df.iterrows()]
-                    
-                    # Plot bars
-                    ax.barh(y_pos, gantt_df["Duration"], left=gantt_df["Start"], color=task_colors, alpha=0.9)
-                    
-                    # Add vertical lines for sprint boundaries
-                    for sprint in range(1, num_sprints + 1):
-                        ax.axvline(sprint, color='white', linestyle='--', alpha=0.3)
-                    
-                    # Set y-axis labels to task names
-                    ax.set_yticks(y_pos)
-                    ax.set_yticklabels(gantt_df["Task"], fontsize=8, color='#e0e0e0')
-                    
-                    # Set x-axis labels to sprint numbers
-                    ax.set_xticks(range(1, num_sprints + 2))
-                    ax.set_xticklabels([f"Sprint {i}" for i in range(1, num_sprints + 2)], color='#e0e0e0')
-                    
-                    # Add member name annotations
-                    for i, (_, task) in enumerate(gantt_df.iterrows()):
-                        ax.text(task["Start"] + 0.5, i, task["Member"], 
-                               ha='center', va='center', color='#1e1e1e', fontweight='bold')
-                    
-                    # Add labels
-                    ax.set_xlabel('Sprints', color='#e0e0e0')
-                    ax.set_title('Task Timeline Across Sprints', color='#81c784')
-                    
-                    # Style the chart
-                    ax.tick_params(axis='x', colors='#e0e0e0')
-                    ax.spines['bottom'].set_color('#555555')
-                    ax.spines['top'].set_color('#555555')
-                    ax.spines['left'].set_color('#555555')
-                    ax.spines['right'].set_color('#555555')
-                    ax.grid(color='#333333', linestyle='-', linewidth=0.5, alpha=0.7)
-                    
-                    fig.patch.set_facecolor('#1e1e1e')
-                    plt.tight_layout()
-                    st.pyplot(fig)
+                    # Pie chart of unassigned tasks by priority
+                    if "Priority" in unassigned_df.columns:
+                        priority_counts = unassigned_df["Priority"].value_counts().reset_index()
+                        priority_counts.columns = ["Priority", "Count"]
+                        
+                        fig = px.pie(
+                            priority_counts,
+                            names="Priority",
+                            values="Count",
+                            title="Unassigned Tasks by Priority"
+                        )
+                        
+                        st.plotly_chart(fig, use_container_width=True)
                 else:
-                    st.info("No tasks have been assigned to sprints yet.")
-            
-            # Download options
-            st.subheader("Export Results")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown(get_download_link(df, "Task_Assignments.xlsx", "excel"), unsafe_allow_html=True)
-                
-            with col2:
-                st.markdown(get_download_link(df, "Task_Assignments.csv", "csv"), unsafe_allow_html=True)
-
+                    st.success("All tasks have been assigned successfully!")
     
     # 1.5 AZURE DEVOPS TAB
     with azure_tab:
@@ -1437,150 +998,6 @@ with main_tabs[0]:
                     with st.spinner("Exporting to Azure DevOps..."):
                         # Simulate export
                         st.success("Sprint plan exported to Azure DevOps successfully!")
-    # 6. AI SUGGESTIONS TAB
-    ai_tab = st.tabs(["6. AI Suggestions"])[0]
-
-    with ai_tab:
-        st.header("AI Suggestions and Insights")
-        st.markdown("Powered by OpenRouter + OpenAI")
-
-        if "ai_messages" not in st.session_state:
-            st.session_state.ai_messages = [
-                {"role": "assistant", "content": "Hello! I'm your sprint planning assistant. How can I help you with your task assignments today?"}
-            ]
-
-        for message in st.session_state.ai_messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-
-        api_key = st.text_input("OpenRouter API Key", type="password", key="ai_api_key")
-
-        if st.session_state.df_tasks is None:
-            st.info("Please upload task data in the Upload Tasks tab first.")
-            st.stop()
-
-        df = st.session_state.df_tasks.copy()
-
-        # 🔍 Extract component expertise from the task file
-        expertise_col_member = "Unnamed: 15"
-        expertise_col_comp = "Unnamed: 16"
-        component_col = None
-
-        if expertise_col_member in df.columns and expertise_col_comp in df.columns:
-            expertise_map = df[[expertise_col_member, expertise_col_comp]].dropna()
-            expertise_map.columns = ["Member", "Expertise"]
-            expertise_dict = expertise_map.set_index("Member")["Expertise"].to_dict()
-        else:
-            expertise_dict = {}
-
-        # 📦 Extract component name from Title (e.g., "Comp1: something")
-        if "Title" in df.columns:
-            df["Component"] = df["Title"].str.extract(r"(Comp\d+)", expand=False)
-
-        # 🧠 Analyze mismatches
-        df["Assigned To"] = df["Assigned To"].fillna("").str.strip()
-        df["Mismatch"] = df.apply(
-            lambda row: (
-                row["Assigned To"] in expertise_dict and
-                pd.notna(row["Component"]) and
-                expertise_dict[row["Assigned To"]] != row["Component"]
-            ),
-            axis=1
-        )
-        mismatches = df[df["Mismatch"]]
-
-        # 📬 User input
-        prompt = st.chat_input("Ask about your sprint plan or say 'fix component mismatches'...")
-
-        if prompt:
-            st.session_state.ai_messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
-            # If user wants to fix mismatches
-            if "fix" in prompt.lower() and "mismatch" in prompt.lower():
-                with st.chat_message("assistant"):
-                    st.success("Fixing tasks by component expertise...")
-                    reassigned = 0
-                    for idx, row in mismatches.iterrows():
-                        correct_member = next((m for m, c in expertise_dict.items() if c == row["Component"]), None)
-                        if correct_member:
-                            df.at[idx, "Assigned To"] = correct_member
-                            reassigned += 1
-
-                    st.success(f"Reassigned {reassigned} mismatched tasks.")
-                    st.dataframe(df[["ID", "Title", "Component", "Assigned To"]], use_container_width=True)
-
-                    st.session_state.df_tasks = df  # Save back corrected
-
-                    st.session_state.ai_messages.append({
-                        "role": "assistant",
-                        "content": f"I found and reassigned {reassigned} tasks to match component expertise."
-                    })
-
-            else:
-                # 🧠 AI Context
-                context = f"""You are an expert sprint planning assistant.
-
-    There are {len(df)} tasks. Component expertise is as follows:\n"""
-                for m, c in expertise_dict.items():
-                    context += f"- {m} specializes in {c}\n"
-
-                if not mismatches.empty:
-                    context += "\n⚠️ Detected mismatches:\n"
-                    for _, row in mismatches.iterrows():
-                        context += f"- Task '{row['Title']}' assigned to {row['Assigned To']} but it's {row['Component']}\n"
-
-                context += f"\nUser prompt: {prompt}"
-
-                # 🔁 Stream response from OpenRouter
-                with st.chat_message("assistant"):
-                    message_placeholder = st.empty()
-                    full_response = ""
-
-                    headers = {
-                        "Authorization": f"Bearer {api_key}",
-                        "HTTP-Referer": "https://localhost",
-                        "Content-Type": "application/json"
-                    }
-
-                    body = {
-                        "model": "openai/gpt-3.5-turbo",
-                        "messages": [{"role": "system", "content": context}] +
-                                    [msg for msg in st.session_state.ai_messages if msg["role"] != "assistant"],
-                        "temperature": 0.7,
-                        "max_tokens": 1500,
-                        "stream": True
-                    }
-
-                    try:
-                        with requests.post(
-                            "https://openrouter.ai/api/v1/chat/completions",
-                            headers=headers,
-                            json=body,
-                            stream=True
-                        ) as response:
-                            if response.status_code == 200:
-                                for chunk in response.iter_lines():
-                                    if chunk:
-                                        chunk_str = chunk.decode('utf-8')
-                                        if chunk_str.startswith("data:"):
-                                            try:
-                                                data = json.loads(chunk_str[5:])
-                                                if "choices" in data and data["choices"]:
-                                                    delta = data["choices"][0].get("delta", {})
-                                                    if "content" in delta:
-                                                        full_response += delta["content"]
-                                                        message_placeholder.markdown(full_response + "▌")
-                                            except json.JSONDecodeError:
-                                                continue
-                            else:
-                                full_response = f"Error: {response.status_code} - {response.text}"
-                    except Exception as e:
-                        full_response = f"An error occurred: {str(e)}"
-
-                    message_placeholder.markdown(full_response)
-                    st.session_state.ai_messages.append({"role": "assistant", "content": full_response})
 
 # 2. RETROSPECTIVE ANALYSIS
 with main_tabs[1]:
@@ -1778,10 +1195,8 @@ with main_tabs[2]:
                 }
                 
                 results = st.session_state.results
-                for sprint, tasks in results["sprint_data"]["sprint_assignments"].items():
-                    df = results["df"]
-                    sprint_tasks = df[df["ID"].isin(tasks)]
-                    total_hours = sprint_tasks["Original Estimates"].sum()
+                for sprint, tasks in results["sprint_assignments"].items():
+                    total_hours = sum(task["Original Estimates"] for task in tasks)
                     available = st.session_state.capacity_per_sprint * len(st.session_state.team_members)
                     utilized = total_hours / available * 100
                     
@@ -1817,9 +1232,9 @@ with main_tabs[2]:
                 if "results" in st.session_state and st.session_state.results is not None:
                     # Get all task IDs from sprint planning
                     all_task_ids = set()
-                    for sprint, tasks in st.session_state.results["sprint_data"]["sprint_assignments"].items():
+                    for sprint, tasks in st.session_state.results["sprint_assignments"].items():
                         for task in tasks:
-                            all_task_ids.add(str(task))  # task is already a task ID
+                            all_task_ids.add(str(task["ID"]))
                     
                     # Get all task IDs from retrospectives
                     retro_feedback_df = create_dataframe_from_results(st.session_state.retro_feedback)
