@@ -1567,40 +1567,200 @@ with main_tabs[0]:
 
 # 2. RETROSPECTIVE ANALYSIS
 with main_tabs[1]:
-    st.header("Team Retrospective Analysis Tool")
-    st.markdown("Upload multiple retrospective CSV files to analyze and compare feedback across team retrospectives.")
-    retro_ai = st.tabs([
-        "1. AI for retrospective Tasks"
-    ])
-    with retro_ai:
+    sub_tabs = st.tabs(["📊 Analyze & Visualize", "🤖 AI Retrospective Assistant"])
+
+    # ─────────────── TAB 1: ANALYSIS ───────────────
+    with sub_tabs[0]:
+        st.header("📊 Team Retrospective Analysis Tool")
+        st.markdown("Upload multiple retrospective CSV files to analyze and compare feedback across retrospectives.")
+
+        # --- Upload + Controls ---
+        col1, col2 = st.columns([1, 2])
+    
+        with col1:
+            st.subheader("Controls")
+            
+            uploaded_files = st.file_uploader(
+                "Upload Retrospective CSV Files",
+                type=["csv"],
+                accept_multiple_files=True,
+                help="Upload one or more CSV files containing retrospective data",
+                key="retro_file_uploader"
+            )
+            
+            st.subheader("Filter Settings")
+            min_votes = st.slider("Minimum Votes", 0, 100, 1, key="retro_min_votes")
+            max_votes = st.slider("Maximum Votes", min_votes, 100, 50, key="retro_max_votes")
+            
+            if uploaded_files:
+                st.info(f"Selected {len(uploaded_files)} file(s)")
+                
+                # Process the uploaded files when the analyze button is clicked
+                analyze_button = st.button("Analyze Retrospectives", type="primary", key="analyze_retro_button")
+                
+                if analyze_button:
+                    with st.spinner("Processing retrospective data..."):
+                        feedback_results, processing_logs = compare_retrospectives(
+                            uploaded_files, min_votes, max_votes
+                        )
+                        
+                        # Store results in session state
+                        st.session_state.retro_feedback = feedback_results
+                        st.session_state.retro_logs = processing_logs
+                        
+                        # Show success message
+                        st.success("Retrospective analysis complete!")
+            else:
+                st.warning("Please upload at least one CSV file")
+        
+        with col2:
+            # Show example of expected format if no files uploaded
+            if not uploaded_files:
+                st.subheader("Expected CSV Format")
+                st.markdown("""
+                Your CSV files should include columns for feedback description and votes, with format like:
+                ```
+                Type,Description,Votes
+                Went Well,The team was collaborative,5
+                Needs Improvement,Documentation is lacking,3
+                ```
+                
+                The tool will also recognize associated tasks when formatted as:
+                ```
+                Feedback Description,Work Item Title,Work Item Type,Work Item Id,
+                Documentation is lacking,Improve Docs,Task,12345
+                ```
+                """)
+                
+            # Show results if available
+            elif st.session_state.retro_feedback is not None:
+                # Show processing results
+                with st.expander("Processing Logs", expanded=False):
+                    for log in st.session_state.retro_logs:
+                        st.write(log)
+                
+                # Convert to DataFrame for easier handling
+                results_df = create_dataframe_from_results(st.session_state.retro_feedback)
+                
+                if len(results_df) == 0 or (len(results_df) == 1 and "No valid feedback found" in results_df["Feedback"].iloc[0]):
+                    st.error("No feedback items found within the selected vote range. Try adjusting your filters.")
+                else:
+                    # Display the results
+                    st.subheader(f"Consolidated Feedback ({len(results_df)} items)")
+                    st.dataframe(
+                        results_df,
+                        column_config={
+                            "Feedback": st.column_config.TextColumn("Feedback"),
+                            "Task ID": st.column_config.TextColumn("Task ID"),
+                            "Votes": st.column_config.NumberColumn("Votes")
+                        },
+                        use_container_width=True
+                    )
+                    
+                    # Visualization section
+                    st.subheader("Feedback Visualization")
+                    
+                    # Only show top 15 items in chart to avoid overcrowding
+                    chart_data = results_df.head(15) if len(results_df) > 15 else results_df
+                    
+                    # Create a horizontal bar chart with Plotly
+                    fig = px.bar(
+                        chart_data,
+                        x="Votes",
+                        y="Feedback",
+                        orientation='h',
+                        title=f"Top Feedback Items by Vote Count (min: {min_votes}, max: {max_votes})",
+                        color="Votes",
+                        color_continuous_scale="Viridis"
+                    )
+                    fig.update_layout(yaxis={'categoryorder':'total ascending'})
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Distribution of votes
+                    st.subheader("Vote Distribution")
+                    vote_distribution = px.histogram(
+                        results_df, 
+                        x="Votes",
+                        nbins=20,
+                        title="Distribution of Votes",
+                        labels={"Votes": "Vote Count", "count": "Number of Feedback Items"}
+                    )
+                    st.plotly_chart(vote_distribution, use_container_width=True)
+                    
+                    # Count items with and without associated tasks
+                    with_tasks = results_df["Task ID"].apply(lambda x: x != "None").sum()
+                    without_tasks = len(results_df) - with_tasks
+                    
+                    # Create pie chart for task association
+                    fig3, ax3 = plt.subplots(figsize=(8, 5))
+                    ax3.pie(
+                        [with_tasks, without_tasks],
+                        labels=["With Task ID", "Without Task ID"],
+                        autopct='%1.1f%%',
+                        startangle=90,
+                        colors=['#4CAF50', '#FF9800']
+                    )
+                    ax3.set_title("Feedback Items With Task Association")
+                    ax3.axis('equal')
+                    st.pyplot(fig3)
+                    
+                    # Export options
+                    st.subheader("Export Results")
+                    export_format = st.radio("Select export format:", ["CSV", "Markdown"], key="retro_export_format")
+                    
+                    if export_format == "CSV":
+                        csv = results_df.to_csv(index=False)
+                        st.download_button(
+                            label="Download CSV",
+                            data=csv,
+                            file_name="retrospective_analysis.csv",
+                            mime="text/csv"
+                        )
+                    else:  # Markdown
+                        # Generate markdown content
+                        markdown_content = "# Retrospective Analysis Results\n\n"
+                        markdown_content += f"Filter settings: Min votes: {min_votes}, Max votes: {max_votes}\n\n"
+                        markdown_content += "## Consolidated Feedback\n\n"
+                        
+                        for _, row in results_df.iterrows():
+                            task_info = f" - Task #{row['Task ID']}" if row['Task ID'] != "None" else ""
+                            markdown_content += f"- {row['Feedback']} ({row['Votes']} votes){task_info}\n"
+                        
+                        st.download_button(
+                            label="Download Markdown",
+                            data=markdown_content,
+                            file_name="retrospective_analysis.md",
+                            mime="text/markdown"
+                        )
+
+    # ─────────────── TAB 2: AI ASSISTANT ───────────────
+    with sub_tabs[1]:
         st.header("🤖 AI Retrospective Assistant")
-        st.markdown("Ask questions about your feedback, get summaries, or suggestions for improvement.\n\nPowered by OpenRouter + OpenAI.")
+        st.markdown("Ask questions about feedback, trends, and improvements.")
 
         if "ai_messages" not in st.session_state:
             st.session_state.ai_messages = [
-                {"role": "assistant", "content": "Hi! I'm your retrospective assistant. Ask me about themes, issues, or improvements from your team's feedback."}
+                {"role": "assistant", "content": "Hi! I'm your retrospective assistant. How can I help?"}
             ]
 
-        for message in st.session_state.ai_messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
+        for msg in st.session_state.ai_messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
 
         api_key = st.text_input("🔑 OpenRouter API Key", type="password", key="ai_api_key")
 
         if "retro_feedback" not in st.session_state or st.session_state.retro_feedback is None:
-            st.info("Please analyze retrospective data in the first tab before chatting.")
+            st.info("Analyze retrospectives first in the previous tab.")
             st.stop()
 
         df = create_dataframe_from_results(st.session_state.retro_feedback)
 
-        # Build context for the assistant
-        context = "You are an assistant helping a team reflect on their sprint retrospective. Here’s a summary of feedback:\n\n"
+        # Build context from feedback
+        context = "You are a helpful assistant summarizing retrospective feedback:\n"
         for _, row in df.iterrows():
-            votes = row['Votes']
-            task = f" (Task ID: {row['Task ID']})" if row['Task ID'] != "None" else ""
-            context += f"- {row['Feedback']} [{votes} votes]{task}\n"
+            context += f"- {row['Feedback']} ({row['Votes']} votes){' [Task ID: ' + row['Task ID'] + ']' if row['Task ID'] != 'None' else ''}\n"
 
-        prompt = st.chat_input("Ask me about themes, issues, or suggestions...")
+        prompt = st.chat_input("Ask me anything about this retrospective...")
 
         if prompt:
             st.session_state.ai_messages.append({"role": "user", "content": prompt})
@@ -1608,7 +1768,7 @@ with main_tabs[1]:
                 st.markdown(prompt)
 
             with st.chat_message("assistant"):
-                message_placeholder = st.empty()
+                msg_placeholder = st.empty()
                 full_response = ""
 
                 headers = {
@@ -1620,201 +1780,32 @@ with main_tabs[1]:
                 body = {
                     "model": "openai/gpt-3.5-turbo",
                     "messages": [{"role": "system", "content": context}] +
-                                [msg for msg in st.session_state.ai_messages if msg["role"] != "assistant"],
+                                [m for m in st.session_state.ai_messages if m["role"] != "assistant"],
                     "temperature": 0.7,
                     "max_tokens": 1500,
                     "stream": True
                 }
 
                 try:
-                    with requests.post(
-                        "https://openrouter.ai/api/v1/chat/completions",
-                        headers=headers,
-                        json=body,
-                        stream=True
-                    ) as response:
+                    with requests.post("https://openrouter.ai/api/v1/chat/completions",
+                                       headers=headers, json=body, stream=True) as response:
                         if response.status_code == 200:
                             for chunk in response.iter_lines():
                                 if chunk:
-                                    chunk_str = chunk.decode('utf-8')
+                                    chunk_str = chunk.decode("utf-8")
                                     if chunk_str.startswith("data:"):
-                                        try:
-                                            data = json.loads(chunk_str[5:])
-                                            if "choices" in data and data["choices"]:
-                                                delta = data["choices"][0].get("delta", {})
-                                                if "content" in delta:
-                                                    full_response += delta["content"]
-                                                    message_placeholder.markdown(full_response + "▌")
-                                        except json.JSONDecodeError:
-                                            continue
+                                        data = json.loads(chunk_str[5:])
+                                        delta = data["choices"][0].get("delta", {})
+                                        if "content" in delta:
+                                            full_response += delta["content"]
+                                            msg_placeholder.markdown(full_response + "▌")
                         else:
                             full_response = f"Error: {response.status_code} - {response.text}"
                 except Exception as e:
-                    full_response = f"An error occurred: {str(e)}"
+                    full_response = f"Error: {e}"
 
-                message_placeholder.markdown(full_response)
+                msg_placeholder.markdown(full_response)
                 st.session_state.ai_messages.append({"role": "assistant", "content": full_response})
-
-
-    
-    # Sidebar for file upload and filtering controls
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        st.subheader("Controls")
-        
-        uploaded_files = st.file_uploader(
-            "Upload Retrospective CSV Files",
-            type=["csv"],
-            accept_multiple_files=True,
-            help="Upload one or more CSV files containing retrospective data",
-            key="retro_file_uploader"
-        )
-        
-        st.subheader("Filter Settings")
-        min_votes = st.slider("Minimum Votes", 0, 100, 1, key="retro_min_votes")
-        max_votes = st.slider("Maximum Votes", min_votes, 100, 50, key="retro_max_votes")
-        
-        if uploaded_files:
-            st.info(f"Selected {len(uploaded_files)} file(s)")
-            
-            # Process the uploaded files when the analyze button is clicked
-            analyze_button = st.button("Analyze Retrospectives", type="primary", key="analyze_retro_button")
-            
-            if analyze_button:
-                with st.spinner("Processing retrospective data..."):
-                    feedback_results, processing_logs = compare_retrospectives(
-                        uploaded_files, min_votes, max_votes
-                    )
-                    
-                    # Store results in session state
-                    st.session_state.retro_feedback = feedback_results
-                    st.session_state.retro_logs = processing_logs
-                    
-                    # Show success message
-                    st.success("Retrospective analysis complete!")
-        else:
-            st.warning("Please upload at least one CSV file")
-    
-    with col2:
-        # Show example of expected format if no files uploaded
-        if not uploaded_files:
-            st.subheader("Expected CSV Format")
-            st.markdown("""
-            Your CSV files should include columns for feedback description and votes, with format like:
-            ```
-            Type,Description,Votes
-            Went Well,The team was collaborative,5
-            Needs Improvement,Documentation is lacking,3
-            ```
-            
-            The tool will also recognize associated tasks when formatted as:
-            ```
-            Feedback Description,Work Item Title,Work Item Type,Work Item Id,
-            Documentation is lacking,Improve Docs,Task,12345
-            ```
-            """)
-            
-        # Show results if available
-        elif st.session_state.retro_feedback is not None:
-            # Show processing results
-            with st.expander("Processing Logs", expanded=False):
-                for log in st.session_state.retro_logs:
-                    st.write(log)
-            
-            # Convert to DataFrame for easier handling
-            results_df = create_dataframe_from_results(st.session_state.retro_feedback)
-            
-            if len(results_df) == 0 or (len(results_df) == 1 and "No valid feedback found" in results_df["Feedback"].iloc[0]):
-                st.error("No feedback items found within the selected vote range. Try adjusting your filters.")
-            else:
-                # Display the results
-                st.subheader(f"Consolidated Feedback ({len(results_df)} items)")
-                st.dataframe(
-                    results_df,
-                    column_config={
-                        "Feedback": st.column_config.TextColumn("Feedback"),
-                        "Task ID": st.column_config.TextColumn("Task ID"),
-                        "Votes": st.column_config.NumberColumn("Votes")
-                    },
-                    use_container_width=True
-                )
-                
-                # Visualization section
-                st.subheader("Feedback Visualization")
-                
-                # Only show top 15 items in chart to avoid overcrowding
-                chart_data = results_df.head(15) if len(results_df) > 15 else results_df
-                
-                # Create a horizontal bar chart with Plotly
-                fig = px.bar(
-                    chart_data,
-                    x="Votes",
-                    y="Feedback",
-                    orientation='h',
-                    title=f"Top Feedback Items by Vote Count (min: {min_votes}, max: {max_votes})",
-                    color="Votes",
-                    color_continuous_scale="Viridis"
-                )
-                fig.update_layout(yaxis={'categoryorder':'total ascending'})
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Distribution of votes
-                st.subheader("Vote Distribution")
-                vote_distribution = px.histogram(
-                    results_df, 
-                    x="Votes",
-                    nbins=20,
-                    title="Distribution of Votes",
-                    labels={"Votes": "Vote Count", "count": "Number of Feedback Items"}
-                )
-                st.plotly_chart(vote_distribution, use_container_width=True)
-                
-                # Count items with and without associated tasks
-                with_tasks = results_df["Task ID"].apply(lambda x: x != "None").sum()
-                without_tasks = len(results_df) - with_tasks
-                
-                # Create pie chart for task association
-                fig3, ax3 = plt.subplots(figsize=(8, 5))
-                ax3.pie(
-                    [with_tasks, without_tasks],
-                    labels=["With Task ID", "Without Task ID"],
-                    autopct='%1.1f%%',
-                    startangle=90,
-                    colors=['#4CAF50', '#FF9800']
-                )
-                ax3.set_title("Feedback Items With Task Association")
-                ax3.axis('equal')
-                st.pyplot(fig3)
-                
-                # Export options
-                st.subheader("Export Results")
-                export_format = st.radio("Select export format:", ["CSV", "Markdown"], key="retro_export_format")
-                
-                if export_format == "CSV":
-                    csv = results_df.to_csv(index=False)
-                    st.download_button(
-                        label="Download CSV",
-                        data=csv,
-                        file_name="retrospective_analysis.csv",
-                        mime="text/csv"
-                    )
-                else:  # Markdown
-                    # Generate markdown content
-                    markdown_content = "# Retrospective Analysis Results\n\n"
-                    markdown_content += f"Filter settings: Min votes: {min_votes}, Max votes: {max_votes}\n\n"
-                    markdown_content += "## Consolidated Feedback\n\n"
-                    
-                    for _, row in results_df.iterrows():
-                        task_info = f" - Task #{row['Task ID']}" if row['Task ID'] != "None" else ""
-                        markdown_content += f"- {row['Feedback']} ({row['Votes']} votes){task_info}\n"
-                    
-                    st.download_button(
-                        label="Download Markdown",
-                        data=markdown_content,
-                        file_name="retrospective_analysis.md",
-                        mime="text/markdown"
-                    )
 
 # 3. INSIGHTS INTEGRATION
 with main_tabs[2]:
