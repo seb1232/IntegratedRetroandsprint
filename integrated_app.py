@@ -1598,7 +1598,7 @@ with main_tabs[1]:
                 # Process the uploaded files when the analyze button is clicked
                 analyze_button = st.button("Analyze Retrospectives", type="primary", key="analyze_retro_button")
                 
-                if uploaded_files:
+                if analyze_button:
                     with st.spinner("Processing retrospective data..."):
                         feedback_results, processing_logs = compare_retrospectives(
                             uploaded_files, min_votes, max_votes
